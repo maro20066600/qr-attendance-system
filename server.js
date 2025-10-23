@@ -31,9 +31,9 @@ app.use(express.static('public'));
 
 app.use(session({
   secret: 'qr-attendance-secret',
-  resave: false,
+  resave: true,
   saveUninitialized: true,
-  cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
+  cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 * 30, httpOnly: true }
 }));
 
 async function getMembers() {
