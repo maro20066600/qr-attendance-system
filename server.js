@@ -7,7 +7,6 @@ const path = require('path');
 const csv = require('csv-parser');
 const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
-const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.supabase_url || process.env.SUPABASE_URL;
@@ -30,28 +29,12 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
-
 app.use(session({
   secret: 'qr-attendance-secret',
   resave: true,
   saveUninitialized: true,
-  cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 * 30, httpOnly: false }
+  cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 * 30, httpOnly: true }
 }));
-
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, { sessionId: req.sessionID, userId: req.session?.userId });
-  next();
-});
 
 async function getMembers() {
   const { data, error } = await supabase.from('members').select('*');
@@ -76,20 +59,7 @@ async function saveAttendance(data) {
 }
 
 function isLoggedIn(req) {
-  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
-  if (!token) {
-    console.log('No token found');
-    return false;
-  }
-  
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'qr-attendance-secret');
-    console.log('Token verified:', { userId: decoded.userId });
-    return decoded.userId === 'admin';
-  } catch (err) {
-    console.log('Token verification failed:', err.message);
-    return false;
-  }
+  return req.session.userId === 'admin';
 }
 
 app.get('/', (req, res) => {
@@ -112,19 +82,14 @@ app.post('/api/login', (req, res) => {
   const adminPassword = process.env.admin_password || process.env.ADMIN_PASSWORD || '1234';
   
   if (username === adminUsername && password === adminPassword) {
-    const token = jwt.sign(
-      { userId: 'admin' },
-      process.env.JWT_SECRET || 'qr-attendance-secret',
-      { expiresIn: '30d' }
-    );
-    console.log('Login successful, token generated');
-    res.json({ success: true, token });
-    return;
+    req.session.userId = 'admin';
+    return res.json({ success: true });
   }
   res.status(401).json({ success: false, message: 'Invalid credentials' });
 });
 
 app.post('/api/logout', (req, res) => {
+  req.session.destroy();
   res.json({ success: true });
 });
 

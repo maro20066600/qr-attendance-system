@@ -66,11 +66,6 @@
   </div>
 
   <script>
-    const getAuthHeaders = () => {
-      const token = localStorage.getItem('token');
-      return token ? { 'Authorization': `Bearer ${token}` } : {};
-    };
-
     const dropZone = document.getElementById('dropZone');
     const csvFile = document.getElementById('csvFile');
 
@@ -99,9 +94,7 @@
       try {
         const response = await fetch('/api/upload-csv', {
           method: 'POST',
-          body: formData,
-          headers: getAuthHeaders(),
-          credentials: 'include'
+          body: formData
         });
 
         const data = await response.json();
@@ -121,10 +114,7 @@
 
     async function loadMembers() {
       try {
-        const response = await fetch('/api/members', {
-          headers: getAuthHeaders(),
-          credentials: 'include'
-        });
+        const response = await fetch('/api/members');
         const data = await response.json();
 
         if (data.success && data.members.length > 0) {
