@@ -101,7 +101,15 @@ app.post('/api/login', (req, res) => {
   
   if (username === adminUsername && password === adminPassword) {
     req.session.userId = 'admin';
-    return res.json({ success: true });
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ success: false, message: 'Session error' });
+      }
+      console.log('Session saved:', { userId: req.session.userId, sessionId: req.sessionID });
+      res.json({ success: true });
+    });
+    return;
   }
   res.status(401).json({ success: false, message: 'Invalid credentials' });
 });
