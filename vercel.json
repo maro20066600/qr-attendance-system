@@ -19,11 +19,5 @@
       "src": "/(.*)",
       "dest": "/server.js"
     }
-  ],
-  "env": {
-    "supabase_url": "@supabase_url",
-    "supabase_key": "@supabase_key",
-    "admin_username": "@admin_username",
-    "admin_password": "@admin_password"
-  }
+  ]
 }
