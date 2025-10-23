@@ -94,7 +94,8 @@
       try {
         const response = await fetch('/api/upload-csv', {
           method: 'POST',
-          body: formData
+          body: formData,
+          credentials: 'include'
         });
 
         const data = await response.json();
@@ -114,7 +115,9 @@
 
     async function loadMembers() {
       try {
-        const response = await fetch('/api/members');
+        const response = await fetch('/api/members', {
+          credentials: 'include'
+        });
         const data = await response.json();
 
         if (data.success && data.members.length > 0) {
