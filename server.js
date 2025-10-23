@@ -23,7 +23,7 @@ const supabase = createClient(
 
 const app = express();
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -127,16 +127,13 @@ app.post('/api/upload-csv', upload.single('csvFile'), async (req, res) => {
       .on('end', async () => {
         try {
           await saveMembers(members);
-          fs.unlinkSync(req.file.path);
           res.json({ success: true, count: members.length });
         } catch (err) {
           console.error('Save members error:', err);
-          fs.unlinkSync(req.file.path);
-          res.status(400).json({ success: false, message: 'Error saving to database: ' + err.message });
+          res.status(500).json({ success: false, message: 'Error saving members: ' + err.message });
         }
       })
       .on('error', (err) => {
-        fs.unlinkSync(req.file.path);
         res.status(400).json({ success: false, message: 'Error parsing CSV' });
       });
   } catch (err) {
