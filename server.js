@@ -72,7 +72,10 @@ app.get('/login', (req, res) => {
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  if (username === 'admin' && password === '1234') {
+  const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1234';
+  
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
     req.session.userId = 'admin';
     return res.json({ success: true });
   }
