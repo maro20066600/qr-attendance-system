@@ -14,6 +14,12 @@
         <a href="/dashboard" class="text-gray-700 hover:text-indigo-600 font-medium">Dashboard</a>
         <a href="/scan" class="text-gray-700 hover:text-indigo-600 font-medium">Scan</a>
         <a href="/attendance" class="text-gray-700 hover:text-indigo-600 font-medium">Attendance</a>
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="authToggle" class="w-4 h-4" onchange="toggleAuthCheck()">
+            <span class="text-sm text-gray-700 font-medium">Auth Check</span>
+          </label>
+        </div>
         <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Logout</button>
       </div>
     </div>
@@ -225,6 +231,36 @@
     }
 
     loadMembers();
+
+    async function loadAuthCheckStatus() {
+      try {
+        const response = await fetch('/api/auth-check-status');
+        const data = await response.json();
+        if (data.success) {
+          document.getElementById('authToggle').checked = data.authCheckEnabled;
+        }
+      } catch (err) {
+        console.error('Error loading auth check status:', err);
+      }
+    }
+
+    async function toggleAuthCheck() {
+      try {
+        const response = await fetch('/api/toggle-auth-check', { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+          showSuccessModal(`Auth Check ${data.authCheckEnabled ? 'Enabled' : 'Disabled'}`);
+        } else {
+          showErrorModal(data.message || 'Failed to toggle auth check');
+          loadAuthCheckStatus();
+        }
+      } catch (err) {
+        showErrorModal('Error toggling auth check');
+        loadAuthCheckStatus();
+      }
+    }
+
+    loadAuthCheckStatus();
   </script>
 </body>
 </html>

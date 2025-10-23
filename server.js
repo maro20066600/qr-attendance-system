@@ -25,6 +25,8 @@ const app = express();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+let authCheckEnabled = true;
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
@@ -59,6 +61,9 @@ async function saveAttendance(data) {
 }
 
 function isLoggedIn(req) {
+  if (!authCheckEnabled) {
+    return true;
+  }
   return req.session.userId === 'admin';
 }
 
@@ -91,6 +96,18 @@ app.post('/api/login', (req, res) => {
 app.post('/api/logout', (req, res) => {
   req.session.destroy();
   res.json({ success: true });
+});
+
+app.get('/api/auth-check-status', (req, res) => {
+  res.json({ success: true, authCheckEnabled });
+});
+
+app.post('/api/toggle-auth-check', (req, res) => {
+  if (!isLoggedIn(req)) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  authCheckEnabled = !authCheckEnabled;
+  res.json({ success: true, authCheckEnabled });
 });
 
 app.get('/dashboard', (req, res) => {

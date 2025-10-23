@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Attendance - Scan</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 <body class="bg-gray-50">
   <nav class="bg-white shadow-md">
@@ -23,19 +22,6 @@
   <div class="max-w-2xl mx-auto px-4 py-8">
     <div class="bg-white rounded-lg shadow-md p-8">
       <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Attendance Check-in</h2>
-      
-      <!-- Camera Scanner -->
-      <div id="cameraView" class="space-y-6">
-        <div class="bg-gray-100 rounded-lg overflow-hidden">
-          <video id="cameraStream" class="w-full aspect-video bg-black rounded-lg" playsinline></video>
-          <canvas id="canvas" class="hidden"></canvas>
-        </div>
-        <div class="flex gap-3">
-          <button id="startCameraBtn" onclick="startCamera()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg">Start Camera</button>
-          <button id="stopCameraBtn" onclick="stopCamera()" class="hidden flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg">Stop Camera</button>
-        </div>
-        <div id="scanStatus" class="text-center text-gray-600 text-sm">Click "Start Camera" to begin scanning</div>
-      </div>
       
       <!-- HR View -->
       <div id="hrView" class="hidden space-y-6">
@@ -99,7 +85,7 @@
         </div>
       </div>
 
-      <div id="noMemberInfo" class="hidden text-center py-12">
+      <div id="noMemberInfo" class="text-center py-12">
         <p class="text-gray-600 text-lg">Scan a QR code to check in</p>
       </div>
     </div>
@@ -124,83 +110,10 @@
   <script>
     let currentMemberId = null;
     let isLoggedIn = false;
-    let cameraActive = false;
-    let videoStream = null;
-    let animationId = null;
 
-    async function startCamera() {
-      try {
-        videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false
-        });
-        
-        const video = document.getElementById('cameraStream');
-        video.srcObject = videoStream;
-        video.play();
-        
-        cameraActive = true;
-        document.getElementById('startCameraBtn').classList.add('hidden');
-        document.getElementById('stopCameraBtn').classList.remove('hidden');
-        document.getElementById('scanStatus').textContent = 'Scanning... Point camera at QR code';
-        
-        scanQRCode();
-      } catch (err) {
-        showErrorModal('Unable to access camera. Please check permissions.');
-        console.error('Camera error:', err);
-      }
-    }
-
-    function stopCamera() {
-      cameraActive = false;
-      if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-      }
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-      }
-      document.getElementById('startCameraBtn').classList.remove('hidden');
-      document.getElementById('stopCameraBtn').classList.add('hidden');
-      document.getElementById('scanStatus').textContent = 'Camera stopped';
-    }
-
-    function scanQRCode() {
-      const video = document.getElementById('cameraStream');
-      const canvas = document.getElementById('canvas');
-      const context = canvas.getContext('2d');
-
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert'
-        });
-
-        if (code) {
-          const url = new URL(code.data, window.location.origin);
-          const token = url.searchParams.get('token');
-          
-          if (token) {
-            stopCamera();
-            document.getElementById('scanStatus').textContent = 'QR code detected! Loading...';
-            loadMemberInfo(token);
-            return;
-          }
-        }
-      }
-
-      if (cameraActive) {
-        animationId = requestAnimationFrame(scanQRCode);
-      }
-    }
-
-    async function loadMemberInfo(scannedToken = null) {
+    async function loadMemberInfo() {
       const params = new URLSearchParams(window.location.search);
-      const urlToken = params.get('token');
-      const token = scannedToken || urlToken;
+      const token = params.get('token');
 
       if (!token) {
         document.getElementById('hrView').classList.add('hidden');
@@ -254,17 +167,12 @@
             document.getElementById('userView').classList.remove('hidden');
           }
 
-          document.getElementById('cameraView').classList.add('hidden');
           document.getElementById('noMemberInfo').classList.add('hidden');
         } else {
           showErrorModal(data.message || 'Member not found');
-          document.getElementById('cameraView').classList.remove('hidden');
-          setTimeout(() => startCamera(), 2000);
         }
       } catch (err) {
         showErrorModal('Error loading member information');
-        document.getElementById('cameraView').classList.remove('hidden');
-        setTimeout(() => startCamera(), 2000);
       }
     }
 
@@ -281,11 +189,7 @@
         if (data.success) {
           showSuccessModal('Marked present successfully!');
           setTimeout(() => {
-            document.getElementById('hrView').classList.add('hidden');
-            document.getElementById('userView').classList.add('hidden');
-            document.getElementById('cameraView').classList.remove('hidden');
-            document.getElementById('scanStatus').textContent = 'Click "Start Camera" to scan another QR code';
-            startCamera();
+            loadMemberInfo();
           }, 2000);
         } else {
           showErrorModal(data.message || 'Error marking present');
@@ -322,12 +226,7 @@
       document.getElementById('errorModal').classList.add('hidden');
     }
 
-    // Load member info from URL token if present, otherwise show camera
-    const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get('token');
-    if (urlToken) {
-      loadMemberInfo(urlToken);
-    }
+    loadMemberInfo();
   </script>
 </body>
 </html>
