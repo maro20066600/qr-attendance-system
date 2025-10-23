@@ -118,8 +118,7 @@
         const data = await response.json();
 
         if (data.success && data.members.length > 0) {
-          const newMembers = data.members.filter(m => !cachedMembers.find(cm => cm.id === m.id));
-          cachedMembers = [...cachedMembers, ...newMembers];
+          cachedMembers = data.members;
           
           let html = '<table class="w-full border-collapse"><thead><tr class="bg-gray-100"><th class="border p-2 text-left">ID</th><th class="border p-2 text-left">Patient Name</th><th class="border p-2 text-left">Hospital Name</th><th class="border p-2 text-left">Major</th><th class="border p-2 text-left">QR Code</th></tr></thead><tbody>';
           
