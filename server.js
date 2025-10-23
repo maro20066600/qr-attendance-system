@@ -9,13 +9,16 @@ const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
 const { createClient } = require('@supabase/supabase-js');
 
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
+  console.error('ERROR: Missing SUPABASE_URL or SUPABASE_KEY environment variables');
+}
+
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_URL || 'https://placeholder.supabase.co',
+  process.env.SUPABASE_KEY || 'placeholder-key'
 );
 
 const app = express();
-const PORT = 3000;
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -388,6 +391,8 @@ app.delete('/api/delete-attendance/:id', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error deleting record: ' + err.message });
   }
 });
+
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`QR Attendance System running on http://localhost:${PORT}`);
