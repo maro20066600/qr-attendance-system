@@ -47,6 +47,11 @@ app.use(session({
   cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 * 30, httpOnly: false }
 }));
 
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, { sessionId: req.sessionID, userId: req.session?.userId });
+  next();
+});
+
 async function getMembers() {
   const { data, error } = await supabase.from('members').select('*');
   if (error) throw error;
@@ -70,7 +75,9 @@ async function saveAttendance(data) {
 }
 
 function isLoggedIn(req) {
-  return req.session.userId === 'admin';
+  const isLogged = req.session && req.session.userId === 'admin';
+  console.log('isLoggedIn check:', { userId: req.session?.userId, isLogged });
+  return isLogged;
 }
 
 app.get('/', (req, res) => {
