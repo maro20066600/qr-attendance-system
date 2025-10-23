@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Attendance - Scan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-indigo-600">QR Attendance</h1>
+      <div class="flex gap-4 items-center">
+        <a href="/dashboard" class="text-gray-700 hover:text-indigo-600 font-medium">Dashboard</a>
+        <a href="/scan" class="text-gray-700 hover:text-indigo-600 font-medium">Scan</a>
+        <a href="/attendance" class="text-gray-700 hover:text-indigo-600 font-medium">Attendance</a>
+        <button id="logoutBtn" onclick="logout()" class="hidden bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-2xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-md p-8">
+      <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Attendance Check-in</h2>
+      
+      <!-- HR View -->
+      <div id="hrView" class="hidden space-y-6">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">ID</p>
+            <p id="memberId" class="text-xl font-semibold text-gray-800"></p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">Patient Name</p>
+            <p id="memberName" class="text-xl font-semibold text-gray-800"></p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">Hospital Name</p>
+            <p id="memberTeam" class="text-xl font-semibold text-gray-800"></p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">Major</p>
+            <p id="memberGovernorate" class="text-xl font-semibold text-gray-800"></p>
+          </div>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p class="text-sm text-gray-600">Status</p>
+          <p id="memberStatus" class="text-2xl font-bold text-blue-600"></p>
+          <p id="memberTime" class="text-sm text-gray-600 mt-2"></p>
+        </div>
+
+        <button id="markPresentBtn" onclick="markPresent()" class="hidden w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg text-lg">Mark Present</button>
+      </div>
+
+      <!-- User View (Ticket) -->
+      <div id="userView" class="hidden space-y-6">
+        <div class="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6 rounded-lg">
+          <h3 class="text-2xl font-bold mb-2" id="ticketName"></h3>
+          <p class="text-sm opacity-90" id="ticketHospital"></p>
+        </div>
+
+        <div class="space-y-3 bg-gray-50 p-4 rounded-lg">
+          <div class="flex justify-between">
+            <span class="text-gray-600">ID:</span>
+            <span class="font-semibold" id="ticketId"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Major:</span>
+            <span class="font-semibold" id="ticketMajor"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Status:</span>
+            <span class="font-semibold" id="ticketStatus"></span>
+          </div>
+        </div>
+
+        <div class="border-t-2 border-dashed border-gray-300 my-4"></div>
+
+        <div class="text-center">
+          <p class="text-gray-600 text-sm mb-3 font-semibold">Your Ticket</p>
+          <div class="flex justify-center">
+            <img id="ticketQR" src="" alt="Ticket QR" class="w-40 h-40 border-2 border-gray-300 rounded-lg p-2 bg-white">
+          </div>
+        </div>
+      </div>
+
+      <div id="noMemberInfo" class="text-center py-12">
+        <p class="text-gray-600 text-lg">Scan a QR code to check in</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+      <h3 class="text-lg font-semibold text-green-600 mb-2">Success</h3>
+      <p id="successMessage" class="text-gray-700 mb-4"></p>
+      <button onclick="closeSuccessModal()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">Close</button>
+    </div>
+  </div>
+
+  <div id="errorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+      <h3 class="text-lg font-semibold text-red-600 mb-2">Error</h3>
+      <p id="errorMessage" class="text-gray-700 mb-4"></p>
+      <button onclick="closeErrorModal()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg">Close</button>
+    </div>
+  </div>
+
+  <script>
+    let currentMemberId = null;
+    let isLoggedIn = false;
+
+    async function loadMemberInfo() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+
+      if (!token) {
+        document.getElementById('hrView').classList.add('hidden');
+        document.getElementById('userView').classList.add('hidden');
+        document.getElementById('noMemberInfo').classList.remove('hidden');
+        return;
+      }
+
+      currentMemberId = token;
+
+      try {
+        const response = await fetch(`/api/member/${token}`);
+        const data = await response.json();
+
+        if (data.success) {
+          isLoggedIn = data.isLoggedIn;
+
+          if (isLoggedIn) {
+            // HR View
+            document.getElementById('memberId').textContent = data.member.id;
+            document.getElementById('memberName').textContent = data.member.patient_name;
+            document.getElementById('memberTeam').textContent = data.member.hospital_name;
+            document.getElementById('memberGovernorate').textContent = data.member.major;
+            document.getElementById('memberStatus').textContent = data.status;
+            document.getElementById('memberTime').textContent = data.time !== '-' ? `Time: ${data.time}` : '';
+
+            if (data.status === 'Invited') {
+              document.getElementById('markPresentBtn').classList.remove('hidden');
+            } else {
+              document.getElementById('markPresentBtn').classList.add('hidden');
+            }
+
+            document.getElementById('hrView').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+          } else {
+            // User View (Ticket)
+            document.getElementById('ticketId').textContent = data.member.id;
+            document.getElementById('ticketName').textContent = data.member.patient_name;
+            document.getElementById('ticketHospital').textContent = data.member.hospital_name;
+            document.getElementById('ticketMajor').textContent = data.member.major;
+            document.getElementById('ticketStatus').textContent = data.status;
+
+            // Generate Ticket QR
+            const qrResponse = await fetch(`/api/generate-ticket-qr/${token}`);
+            const qrData = await qrResponse.json();
+            
+            if (qrData.success) {
+              document.getElementById('ticketQR').src = qrData.qrImage;
+            }
+
+            document.getElementById('userView').classList.remove('hidden');
+          }
+
+          document.getElementById('noMemberInfo').classList.add('hidden');
+        } else {
+          showErrorModal(data.message || 'Member not found');
+        }
+      } catch (err) {
+        showErrorModal('Error loading member information');
+      }
+    }
+
+    async function markPresent() {
+      if (!currentMemberId) return;
+
+      try {
+        const response = await fetch(`/api/mark-present/${currentMemberId}`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showSuccessModal('Marked present successfully!');
+          setTimeout(() => {
+            loadMemberInfo();
+          }, 2000);
+        } else {
+          showErrorModal(data.message || 'Error marking present');
+        }
+      } catch (err) {
+        showErrorModal('Error marking present');
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login';
+      } catch (err) {
+        showErrorModal('Error logging out');
+      }
+    }
+
+    function showSuccessModal(message) {
+      document.getElementById('successMessage').textContent = message;
+      document.getElementById('successModal').classList.remove('hidden');
+    }
+
+    function closeSuccessModal() {
+      document.getElementById('successModal').classList.add('hidden');
+    }
+
+    function showErrorModal(message) {
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorModal').classList.remove('hidden');
+    }
+
+    function closeErrorModal() {
+      document.getElementById('errorModal').classList.add('hidden');
+    }
+
+    loadMemberInfo();
+  </script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Attendance - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-indigo-600">QR Attendance</h1>
+      <div class="flex gap-4 items-center">
+        <a href="/dashboard" class="text-gray-700 hover:text-indigo-600 font-medium">Dashboard</a>
+        <a href="/scan" class="text-gray-700 hover:text-indigo-600 font-medium">Scan</a>
+        <a href="/attendance" class="text-gray-700 hover:text-indigo-600 font-medium">Attendance</a>
+        <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 gap-8">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Upload CSV</h2>
+        <form id="uploadForm" class="space-y-4">
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-500 transition cursor-pointer" id="dropZone">
+            <input type="file" id="csvFile" name="csvFile" accept=".csv" class="hidden" required>
+            <div class="text-gray-600">
+              <p class="text-lg font-medium">Drag and drop your CSV file here</p>
+              <p class="text-sm text-gray-500">or click to select</p>
+              <p class="text-xs text-gray-400 mt-2">Expected columns: id, patient_name, hospital_name, major</p>
+            </div>
+          </div>
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg">Upload CSV</button>
+        </form>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Members & QR Codes</h2>
+        <div id="membersContainer" class="overflow-x-auto">
+          <p class="text-gray-500">No members uploaded yet. Upload a CSV file to get started.</p>
+        </div>
+        <div id="downloadQRBtns" class="hidden mt-4 flex gap-2">
+          <button onclick="downloadQRCodesAsCSV()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg">Download QR Codes as CSV</button>
+          <button onclick="downloadAllQRCodes()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg">Download QR Codes as PNG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+      <h3 class="text-lg font-semibold text-green-600 mb-2">Success</h3>
+      <p id="successMessage" class="text-gray-700 mb-4"></p>
+      <button onclick="closeSuccessModal()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">Close</button>
+    </div>
+  </div>
+
+  <div id="errorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+      <h3 class="text-lg font-semibold text-red-600 mb-2">Error</h3>
+      <p id="errorMessage" class="text-gray-700 mb-4"></p>
+      <button onclick="closeErrorModal()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg">Close</button>
+    </div>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const csvFile = document.getElementById('csvFile');
+
+    dropZone.addEventListener('click', () => csvFile.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+      csvFile.files = e.dataTransfer.files;
+    });
+
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = csvFile.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('csvFile', file);
+
+      try {
+        const response = await fetch('/api/upload-csv', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showSuccessModal(`${data.count} members uploaded successfully!`);
+          csvFile.value = '';
+          setTimeout(loadMembers, 500);
+        } else {
+          showErrorModal(data.message || 'Upload failed');
+        }
+      } catch (err) {
+        showErrorModal('An error occurred during upload');
+      }
+    });
+
+    let cachedMembers = [];
+
+    async function loadMembers() {
+      try {
+        const response = await fetch('/api/members');
+        const data = await response.json();
+
+        if (data.success && data.members.length > 0) {
+          const newMembers = data.members.filter(m => !cachedMembers.find(cm => cm.id === m.id));
+          cachedMembers = [...cachedMembers, ...newMembers];
+          
+          let html = '<table class="w-full border-collapse"><thead><tr class="bg-gray-100"><th class="border p-2 text-left">ID</th><th class="border p-2 text-left">Patient Name</th><th class="border p-2 text-left">Hospital Name</th><th class="border p-2 text-left">Major</th><th class="border p-2 text-left">QR Code</th></tr></thead><tbody>';
+          
+          const qrPromises = cachedMembers.map(member => 
+            fetch(`/api/generate-qr/${member.id}`).then(r => r.json()).then(qrData => ({ member, qrData }))
+          );
+          
+          const results = await Promise.all(qrPromises);
+          
+          results.forEach(({ member, qrData }) => {
+            if (qrData.success) {
+              html += `
+                <tr class="hover:bg-gray-50">
+                  <td class="border p-2">${member.id}</td>
+                  <td class="border p-2">${member.patient_name}</td>
+                  <td class="border p-2">${member.hospital_name}</td>
+                  <td class="border p-2">${member.major}</td>
+                  <td class="border p-2 text-center">
+                    <img src="${qrData.qrImage}" alt="QR" class="w-20 h-20 inline-block">
+                  </td>
+                </tr>
+              `;
+            }
+          });
+          
+          html += '</tbody></table>';
+          document.getElementById('membersContainer').innerHTML = html;
+          document.getElementById('downloadQRBtns').classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error('Error loading members:', err);
+      }
+    }
+
+    async function downloadQRCodesAsCSV() {
+      try {
+        const response = await fetch('/api/qr-codes-csv');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `qr_codes_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        showSuccessModal('QR codes CSV downloaded successfully!');
+      } catch (err) {
+        showErrorModal('Error downloading QR codes CSV');
+      }
+    }
+
+    async function downloadAllQRCodes() {
+      try {
+        const response = await fetch('/api/members');
+        const data = await response.json();
+
+        if (data.success && data.members.length > 0) {
+          for (const member of data.members) {
+            const qrResponse = await fetch(`/api/generate-qr/${member.id}`);
+            const qrData = await qrResponse.json();
+            
+            if (qrData.success) {
+              const link = document.createElement('a');
+              link.href = qrData.qrImage;
+              link.download = `qr_${member.id}_${member.name}.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+          }
+          showSuccessModal('QR codes downloaded successfully!');
+        }
+      } catch (err) {
+        showErrorModal('Error downloading QR codes');
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login';
+      } catch (err) {
+        showErrorModal('Error logging out');
+      }
+    }
+
+    function showSuccessModal(message) {
+      document.getElementById('successMessage').textContent = message;
+      document.getElementById('successModal').classList.remove('hidden');
+    }
+
+    function closeSuccessModal() {
+      document.getElementById('successModal').classList.add('hidden');
+    }
+
+    function showErrorModal(message) {
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorModal').classList.remove('hidden');
+    }
+
+    function closeErrorModal() {
+      document.getElementById('errorModal').classList.add('hidden');
+    }
+
+    loadMembers();
+  </script>
+</body>
+</html>

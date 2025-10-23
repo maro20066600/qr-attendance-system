@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Attendance - Attendance Records</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-indigo-600">QR Attendance</h1>
+      <div class="flex gap-4 items-center">
+        <a href="/dashboard" class="text-gray-700 hover:text-indigo-600 font-medium">Dashboard</a>
+        <a href="/scan" class="text-gray-700 hover:text-indigo-600 font-medium">Scan</a>
+        <a href="/attendance" class="text-gray-700 hover:text-indigo-600 font-medium">Attendance</a>
+        <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Attendance Records</h2>
+        <button onclick="downloadAttendanceCSV()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg">Download CSV</button>
+      </div>
+
+      <div id="attendanceContainer" class="overflow-x-auto">
+        <p class="text-gray-500">Loading attendance records...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="errorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+      <h3 class="text-lg font-semibold text-red-600 mb-2">Error</h3>
+      <p id="errorMessage" class="text-gray-700 mb-4"></p>
+      <button onclick="closeErrorModal()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg">Close</button>
+    </div>
+  </div>
+
+  <script>
+    async function loadAttendance() {
+      try {
+        const response = await fetch('/api/attendance');
+        const data = await response.json();
+
+        if (data.success) {
+          if (data.attendance.length === 0) {
+            document.getElementById('attendanceContainer').innerHTML = '<p class="text-gray-500">No attendance records yet.</p>';
+            return;
+          }
+
+          let html = '<table class="w-full border-collapse"><thead><tr class="bg-gray-100"><th class="border p-2 text-left">ID</th><th class="border p-2 text-left">Patient Name</th><th class="border p-2 text-left">Hospital Name</th><th class="border p-2 text-left">Major</th><th class="border p-2 text-left">Status</th><th class="border p-2 text-left">Time</th></tr></thead><tbody>';
+          
+          data.attendance.forEach(record => {
+            html += `
+              <tr class="hover:bg-gray-50">
+                <td class="border p-2">${record.member_id}</td>
+                <td class="border p-2">${record.patient_name}</td>
+                <td class="border p-2">${record.hospital_name}</td>
+                <td class="border p-2">${record.major}</td>
+                <td class="border p-2"><span class="bg-green-100 text-green-800 px-2 py-1 rounded">${record.status}</span></td>
+                <td class="border p-2">${record.time}</td>
+              </tr>
+            `;
+          });
+          
+          html += '</tbody></table>';
+          document.getElementById('attendanceContainer').innerHTML = html;
+        } else {
+          showErrorModal(data.message || 'Error loading attendance');
+        }
+      } catch (err) {
+        showErrorModal('Error loading attendance records');
+      }
+    }
+
+    async function downloadAttendanceCSV() {
+      try {
+        const response = await fetch('/api/attendance-csv');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `attendance_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        showErrorModal('Error downloading CSV');
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login';
+      } catch (err) {
+        showErrorModal('Error logging out');
+      }
+    }
+
+    function showErrorModal(message) {
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorModal').classList.remove('hidden');
+    }
+
+    function closeErrorModal() {
+      document.getElementById('errorModal').classList.add('hidden');
+    }
+
+    loadAttendance();
+    setInterval(loadAttendance, 5000);
+  </script>
+</body>
+</html>

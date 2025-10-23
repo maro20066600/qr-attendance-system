@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Attendance - Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-md">
+    <div class="bg-white rounded-lg shadow-xl p-8">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">QR Attendance</h1>
+        <p class="text-gray-600 mt-2">HR Login</p>
+      </div>
+
+      <form id="loginForm" class="space-y-6">
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+            placeholder="Enter username"
+            required
+          >
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+            placeholder="Enter password"
+            required
+          >
+        </div>
+
+        <button
+          type="submit"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition duration-200"
+        >
+          Login
+        </button>
+      </form>
+
+      <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <p class="text-sm text-gray-700"><strong>Demo Credentials:</strong></p>
+        <p class="text-sm text-gray-600">Username: <code class="bg-gray-100 px-2 py-1 rounded">admin</code></p>
+        <p class="text-sm text-gray-600">Password: <code class="bg-gray-100 px-2 py-1 rounded">1234</code></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="errorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+      <h3 class="text-lg font-semibold text-red-600 mb-2">Error</h3>
+      <p id="errorMessage" class="text-gray-700 mb-4"></p>
+      <button onclick="closeErrorModal()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg">Close</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          window.location.href = '/dashboard';
+        } else {
+          showErrorModal(data.message || 'Login failed');
+        }
+      } catch (err) {
+        showErrorModal('An error occurred. Please try again.');
+      }
+    });
+
+    function showErrorModal(message) {
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorModal').classList.remove('hidden');
+    }
+
+    function closeErrorModal() {
+      document.getElementById('errorModal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

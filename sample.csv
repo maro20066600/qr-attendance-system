@@ -1,0 +1,11 @@
+id,patient_name,hospital_name,major
+1,Ahmed Hassan,Cairo Medical Center,Cardiology
+2,Fatima Ali,Alexandria Hospital,Neurology
+3,Mohammed Ibrahim,Giza General Hospital,Orthopedics
+4,Layla Ahmed,Cairo Medical Center,Pediatrics
+5,Omar Khalil,Alexandria Hospital,Cardiology
+6,Noor Samir,Giza General Hospital,Dermatology
+7,Zainab Karim,Cairo Medical Center,Neurology
+8,Hassan Youssef,Alexandria Hospital,Orthopedics
+9,Amira Nasser,Giza General Hospital,Cardiology
+10,Karim Saleh,Cairo Medical Center,Pediatrics
