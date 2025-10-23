@@ -7,6 +7,7 @@ const path = require('path');
 const csv = require('csv-parser');
 const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.supabase_url || process.env.SUPABASE_URL;
@@ -75,9 +76,20 @@ async function saveAttendance(data) {
 }
 
 function isLoggedIn(req) {
-  const isLogged = req.session && req.session.userId === 'admin';
-  console.log('isLoggedIn check:', { userId: req.session?.userId, isLogged });
-  return isLogged;
+  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
+  if (!token) {
+    console.log('No token found');
+    return false;
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'qr-attendance-secret');
+    console.log('Token verified:', { userId: decoded.userId });
+    return decoded.userId === 'admin';
+  } catch (err) {
+    console.log('Token verification failed:', err.message);
+    return false;
+  }
 }
 
 app.get('/', (req, res) => {
@@ -100,22 +112,19 @@ app.post('/api/login', (req, res) => {
   const adminPassword = process.env.admin_password || process.env.ADMIN_PASSWORD || '1234';
   
   if (username === adminUsername && password === adminPassword) {
-    req.session.userId = 'admin';
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).json({ success: false, message: 'Session error' });
-      }
-      console.log('Session saved:', { userId: req.session.userId, sessionId: req.sessionID });
-      res.json({ success: true });
-    });
+    const token = jwt.sign(
+      { userId: 'admin' },
+      process.env.JWT_SECRET || 'qr-attendance-secret',
+      { expiresIn: '30d' }
+    );
+    console.log('Login successful, token generated');
+    res.json({ success: true, token });
     return;
   }
   res.status(401).json({ success: false, message: 'Invalid credentials' });
 });
 
 app.post('/api/logout', (req, res) => {
-  req.session.destroy();
   res.json({ success: true });
 });
 

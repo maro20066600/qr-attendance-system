@@ -74,6 +74,7 @@
         const data = await response.json();
 
         if (data.success) {
+          localStorage.setItem('token', data.token);
           window.location.href = '/dashboard';
         } else {
           showErrorModal(data.message || 'Login failed');
