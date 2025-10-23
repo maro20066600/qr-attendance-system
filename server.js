@@ -154,10 +154,6 @@ app.get('/api/members', async (req, res) => {
 });
 
 app.get('/api/generate-qr/:id', async (req, res) => {
-  if (!isLoggedIn(req)) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
   try {
     const members = await getMembers();
     const member = members.find(m => m.id === req.params.id);
