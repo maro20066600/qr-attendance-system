@@ -9,13 +9,16 @@ const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
 const { createClient } = require('@supabase/supabase-js');
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
-  console.error('ERROR: Missing SUPABASE_URL or SUPABASE_KEY environment variables');
+const supabaseUrl = process.env.supabase_url || process.env.SUPABASE_URL;
+const supabaseKey = process.env.supabase_key || process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('ERROR: Missing supabase_url or supabase_key environment variables');
 }
 
 const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://placeholder.supabase.co',
-  process.env.SUPABASE_KEY || 'placeholder-key'
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseKey || 'placeholder-key'
 );
 
 const app = express();
@@ -75,10 +78,10 @@ app.get('/login', (req, res) => {
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1234';
+  const adminUsername = process.env.admin_username || process.env.ADMIN_USERNAME || 'admin';
+  const adminPassword = process.env.admin_password || process.env.ADMIN_PASSWORD || '1234';
   
-  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+  if (username === adminUsername && password === adminPassword) {
     req.session.userId = 'admin';
     return res.json({ success: true });
   }
